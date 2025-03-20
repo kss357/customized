@@ -358,33 +358,26 @@ app.post('/api/like/:id', async (req, res) => {
     try {
         const database = await connectDB();
         const postId = req.params.id;
+        
+        // 현재 게시물 조회
         const post = await database.collection('post').findOne({ _id: new ObjectId(postId) });
         
         if (!post) {
             return res.status(404).json({ success: false, message: '게시물을 찾을 수 없습니다.' });
         }
 
-        // 좋아요 수 토글 (1 증가 또는 1 감소)
-        const result = await database.collection('post').updateOne(
+        // 현재 좋아요 수를 토글 (0이면 1로, 1이면 0으로)
+        const newLikes = post.likes === 1 ? 0 : 1;
+        
+        // 좋아요 수 업데이트
+        await database.collection('post').updateOne(
             { _id: new ObjectId(postId) },
-            { $inc: { likes: 1 } }  // 일단 1 증가
+            { $set: { likes: newLikes } }
         );
-
-        // 업데이트된 게시물 조회
-        const updatedPost = await database.collection('post').findOne({ _id: new ObjectId(postId) });
-
-        // 만약 좋아요가 2 이상이면 1 감소 (토글 효과)
-        if (updatedPost.likes > 1) {
-            await database.collection('post').updateOne(
-                { _id: new ObjectId(postId) },
-                { $inc: { likes: -1 } }
-            );
-            updatedPost.likes = 0;  // UI에 표시할 값
-        }
 
         res.json({ 
             success: true, 
-            likes: updatedPost.likes 
+            likes: newLikes
         });
     } catch (error) {
         console.error('Like error:', error);
