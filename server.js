@@ -36,8 +36,6 @@ async function connectDB() {
         }
         
         const client = await MongoClient.connect(process.env.DB_URL, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             serverSelectionTimeoutMS: 5000
         });
         
