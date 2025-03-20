@@ -20,6 +20,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "vercel-build": "echo hello"
+    "build": "node server.js",
+    "vercel-build": "node server.js"
   }
 }

@@ -25,25 +25,25 @@ const url = process.env.DB_URL;
 
 // MongoDB 연결
 async function connectDB() {
+    if (db) return db;
+    
     try {
-        const client = await new MongoClient(process.env.DB_URL).connect();
-        console.log('DB연결성공')
-        db = client.db('forum')
-        return true;
+        const client = await MongoClient.connect(process.env.DB_URL);
+        console.log('MongoDB 연결 성공');
+        db = client.db('forum');
+        return db;
     } catch (err) {
-        console.error('DB 연결 에러:', err);
-        return false;
+        console.error('MongoDB 연결 에러:', err);
+        throw err;
     }
 }
 
 // 서버 시작
 const port = process.env.PORT || 8080;
-connectDB().then(() => {
-    app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
-    });
-}).catch(err => {
-    console.error('Server startup error:', err);
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+    // 초기 DB 연결 시도
+    connectDB().catch(console.error);
 });
 
 app.get('/', function(req, res){
@@ -52,16 +52,17 @@ app.get('/', function(req, res){
 
 app.get('/list', async (req, res) => {
     try {
+        const database = await connectDB();
         const page = parseInt(req.query.page) || 1;
         const limit = 10; // 페이지당 게시물 수
         const skip = (page - 1) * limit;
 
         // 전체 게시물 수 조회
-        const totalPosts = await db.collection('post').countDocuments();
+        const totalPosts = await database.collection('post').countDocuments();
         const totalPages = Math.ceil(totalPosts / limit);
 
         // 게시물 목록 조회 (페이지네이션 적용)
-        const 글목록 = await db.collection('post').find()
+        const 글목록 = await database.collection('post').find()
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
@@ -73,7 +74,7 @@ app.get('/list', async (req, res) => {
             currentPage: page
         });
     } catch (error) {
-        console.error('Error fetching posts:', error);
+        console.error('Error in /list:', error);
         res.status(500).send('게시물 목록을 불러오는데 실패했습니다.');
     }
 });
@@ -84,6 +85,7 @@ app.get('/write', function(req, res){
 
 app.post('/write', upload.single('image'), async (req, res) => {
     try {
+        const database = await connectDB();
         console.log('=== Write Route Start ===');
         console.log('Request body:', req.body);
         console.log('Request file:', req.file ? {
@@ -182,7 +184,7 @@ app.post('/write', upload.single('image'), async (req, res) => {
         console.log('=== Saving Post to Database ===');
         console.log('Post data:', post);
 
-        const result = await db.collection('post').insertOne(post);
+        const result = await database.collection('post').insertOne(post);
         console.log('Database save result:', result);
 
         res.status(200).json({ 
@@ -203,34 +205,36 @@ app.post('/write', upload.single('image'), async (req, res) => {
 
 app.get('/detail/:id', async (req, res) => {
     try {
+        const database = await connectDB();
         const postId = req.params.id;
         
         // 게시물 조회
-        const post = await db.collection('post').findOne({ _id: new ObjectId(postId) });
+        const post = await database.collection('post').findOne({ _id: new ObjectId(postId) });
         
         if (!post) {
             return res.status(404).render('error', { message: '게시물을 찾을 수 없습니다.' });
         }
 
         // 조회수 증가
-        await db.collection('post').updateOne(
+        await database.collection('post').updateOne(
             { _id: new ObjectId(postId) },
             { $inc: { views: 1 } }
         );
 
         // 업데이트된 게시물 다시 조회
-        const updatedPost = await db.collection('post').findOne({ _id: new ObjectId(postId) });
+        const updatedPost = await database.collection('post').findOne({ _id: new ObjectId(postId) });
 
         res.render('detail', { 글내용: updatedPost });
     } catch (error) {
-        console.error('Detail error:', error);
+        console.error('Detail Route Error:', error);
         res.status(500).render('error', { message: '게시물을 불러오는 중 오류가 발생했습니다.' });
     }
 });
 
 app.put('/edit/:id', async (req, res) => {
     try {
-        const result = await db.collection('post').updateOne(
+        const database = await connectDB();
+        const result = await database.collection('post').updateOne(
             { _id: new ObjectId(req.params.id) },
             { $set: req.body }
         );
@@ -246,7 +250,8 @@ app.put('/edit/:id', async (req, res) => {
 
 app.delete('/delete/:id', async (req, res) => {
     try {
-        const result = await db.collection('post').deleteOne({ _id: new ObjectId(req.params.id) });
+        const database = await connectDB();
+        const result = await database.collection('post').deleteOne({ _id: new ObjectId(req.params.id) });
         if (result.deletedCount === 0) {
             return res.json({ success: false, message: '삭제할 게시물을 찾을 수 없습니다.' });
         }
@@ -328,25 +333,26 @@ app.post('/upload', upload.single('image'), async function(req, res) {
 // 좋아요 API
 app.post('/api/like/:id', async (req, res) => {
     try {
+        const database = await connectDB();
         const postId = req.params.id;
-        const post = await db.collection('post').findOne({ _id: new ObjectId(postId) });
+        const post = await database.collection('post').findOne({ _id: new ObjectId(postId) });
         
         if (!post) {
             return res.status(404).json({ success: false, message: '게시물을 찾을 수 없습니다.' });
         }
 
         // 좋아요 수 토글 (1 증가 또는 1 감소)
-        const result = await db.collection('post').updateOne(
+        const result = await database.collection('post').updateOne(
             { _id: new ObjectId(postId) },
             { $inc: { likes: 1 } }  // 일단 1 증가
         );
 
         // 업데이트된 게시물 조회
-        const updatedPost = await db.collection('post').findOne({ _id: new ObjectId(postId) });
+        const updatedPost = await database.collection('post').findOne({ _id: new ObjectId(postId) });
 
         // 만약 좋아요가 2 이상이면 1 감소 (토글 효과)
         if (updatedPost.likes > 1) {
-            await db.collection('post').updateOne(
+            await database.collection('post').updateOne(
                 { _id: new ObjectId(postId) },
                 { $inc: { likes: -1 } }
             );

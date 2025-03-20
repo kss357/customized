@@ -9,7 +9,17 @@
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "server.js"
+            "dest": "/server.js"
         }
-    ]
+    ],
+    "functions": {
+        "server.js": {
+            "memory": 1024,
+            "maxDuration": 10
+        }
+    },
+    "env": {
+        "NODE_ENV": "production"
+    },
+    "public": true
 } 
