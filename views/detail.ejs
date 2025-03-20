@@ -170,6 +170,27 @@
             font-weight: 500;
             padding: 0.5rem 1rem;
         }
+
+        .likes {
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 20px;
+            transition: all 0.2s ease;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+        }
+
+        .likes:hover {
+            background-color: #fff0f3;
+            border-color: #ff4d6d;
+            transform: scale(1.05);
+        }
+
+        .likes.active {
+            background-color: #ffe0e6;
+            border-color: #ff4d6d;
+            color: #ff4d6d;
+        }
     </style>
 
     <script>
@@ -177,7 +198,49 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             editModal = new bootstrap.Modal(document.getElementById('editModal'));
+            
+            // 초기 좋아요 상태에 따라 active 클래스 추가
+            const likesElement = document.querySelector('.likes');
+            if (likesElement && likesElement.textContent.includes('❤️')) {
+                likesElement.classList.add('active');
+            }
         });
+
+        function toggleLike(postId, element) {
+            // 클릭 효과를 위한 시각적 피드백
+            element.style.transform = 'scale(0.95)';
+            setTimeout(() => {
+                element.style.transform = 'scale(1.05)';
+            }, 100);
+            setTimeout(() => {
+                element.style.transform = 'scale(1)';
+            }, 200);
+
+            fetch(`/api/like/${postId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 좋아요 상태에 따라 아이콘과 스타일 변경
+                    element.innerHTML = `${data.likes > 0 ? '❤️' : '🤍'} ${data.likes}`;
+                    if (data.likes > 0) {
+                        element.classList.add('active');
+                    } else {
+                        element.classList.remove('active');
+                    }
+                } else {
+                    alert(data.message || '좋아요 처리에 실패했습니다.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('좋아요 처리 중 오류가 발생했습니다.');
+            });
+        }
 
         function showEditForm() {
             editModal.show();

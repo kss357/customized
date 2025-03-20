@@ -55,18 +55,7 @@ app.listen(port, () => {
     connectDB().catch(console.error);
 });
 
-// Vercel의 서버리스 환경을 위한 수정
-if (process.env.NODE_ENV !== 'production') {
-    // 개발 환경에서만 서버 시작
-    const port = process.env.PORT || 3000;
-    app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
-        // 초기 DB 연결 시도
-        connectDB().catch(console.error);
-    });
-}
-
-// Vercel 서버리스 함수를 위한 export
+// Vercel/Render 서버리스 함수를 위한 export
 module.exports = app;
 
 app.get('/', function(req, res){
