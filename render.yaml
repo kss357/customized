@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: forum-project
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_URL
+        sync: false
+      - key: BUNNY_STORAGE_ZONE
+        sync: false
+      - key: BUNNY_ACCESS_KEY
+        sync: false
+      - key: BUNNY_PULL_ZONE
+        sync: false 

@@ -55,6 +55,8 @@ if (process.env.NODE_ENV !== 'production') {
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
         console.log(`Server is running on port ${port}`);
+        // 초기 DB 연결 시도
+        connectDB().catch(console.error);
     });
 }
 
