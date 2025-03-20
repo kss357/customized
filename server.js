@@ -4,9 +4,11 @@ const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
 require('dotenv').config();  // .env 파일 로드
+const path = require('path');
 
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({extended: true}))
 app.use(express.json())
 
