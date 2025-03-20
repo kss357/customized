@@ -2,38 +2,34 @@
     "version": 2,
     "builds": [
       {
+        // server.js로부터 Node 서버를 빌드
         "src": "server.js",
-        "use": "@vercel/node"
-      },
-      {
-        "src": "views/**",
-        "use": "@vercel/static"
+        "use": "@vercel/node",
+        "config": {
+          // views, public 폴더를 함께 번들링
+          "includeFiles": [
+            "views/**",
+            "public/**"
+          ]
+        }
       }
     ],
     "routes": [
       {
-        "src": "/views/(.*)",
-        "dest": "/views/$1"
-      },
-      {
+        // 모든 요청을 server.js로 라우팅
         "src": "/(.*)",
         "dest": "server.js"
       }
     ],
     "functions": {
       "server.js": {
+        // 필요에 따라 메모리나 실행 시간 제한 설정
         "memory": 1024,
         "maxDuration": 10
       }
     },
     "env": {
       "NODE_ENV": "production"
-    },
-    "outputDirectory": ".",
-    "public": true,
-    "includeFiles": [
-      "views/**",
-      "public/**"
-    ]
+    }
   }
   
