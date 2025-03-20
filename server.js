@@ -6,11 +6,14 @@ const FormData = require('form-data');
 require('dotenv').config();  // .env 파일 로드
 const path = require('path');
 
+// Express 설정
 app.use(express.static('public'));
+app.use(express.urlencoded({extended: true}));
+app.use(express.json());
+
+// View 엔진 설정
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.use(express.urlencoded({extended: true}))
-app.use(express.json())
 
 // Bunny.net 설정
 const BUNNY_STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE;
