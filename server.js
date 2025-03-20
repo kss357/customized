@@ -23,15 +23,28 @@ const { MongoClient, ObjectId } = require('mongodb')
 let db
 const url = process.env.DB_URL;
 
-new MongoClient(url).connect().then((client)=>{
-  console.log('DB연결성공')
-  db = client.db('forum')
-  app.listen(8080, function(){
-    console.log("Server is running on port 8080");
+// MongoDB 연결
+async function connectDB() {
+    try {
+        const client = await new MongoClient(process.env.DB_URL).connect();
+        console.log('DB연결성공')
+        db = client.db('forum')
+        return true;
+    } catch (err) {
+        console.error('DB 연결 에러:', err);
+        return false;
+    }
+}
+
+// 서버 시작
+const port = process.env.PORT || 8080;
+connectDB().then(() => {
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+    });
+}).catch(err => {
+    console.error('Server startup error:', err);
 });
-}).catch((err)=>{
-  console.log(err)
-})
 
 app.get('/', function(req, res){
     res.redirect('/list');
