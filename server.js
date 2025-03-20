@@ -3,6 +3,7 @@ const app = express();
 const multer = require('multer');
 const axios = require('axios');
 const FormData = require('form-data');
+require('dotenv').config();  // .env 파일 로드
 
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
@@ -10,9 +11,9 @@ app.use(express.urlencoded({extended: true}))
 app.use(express.json())
 
 // Bunny.net 설정
-const BUNNY_STORAGE_ZONE = 'customized'; // Storage Zone 이름
-const BUNNY_ACCESS_KEY = 'a52a8063-4b41-4cc9-bd1fb44fafa4-2bec-4b90'; // Access Key
-const BUNNY_PULL_ZONE = 'https://customized.b-cdn.net'; // Pull Zone URL
+const BUNNY_STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE;
+const BUNNY_ACCESS_KEY = process.env.BUNNY_ACCESS_KEY;
+const BUNNY_PULL_ZONE = process.env.BUNNY_PULL_ZONE;
 
 // multer 설정
 const storage = multer.memoryStorage();
@@ -20,7 +21,8 @@ const upload = multer({ storage: storage });
 
 const { MongoClient, ObjectId } = require('mongodb')
 let db
-const url = 'mongodb+srv://admin:opggtest123@customized.t9rzh.mongodb.net/?retryWrites=true&w=majority&appName=Customized'
+const url = process.env.DB_URL;
+
 new MongoClient(url).connect().then((client)=>{
   console.log('DB연결성공')
   db = client.db('forum')
@@ -31,15 +33,9 @@ new MongoClient(url).connect().then((client)=>{
   console.log(err)
 })
 
-
-
-
 app.get('/', function(req, res){
     res.redirect('/list');
 });
-
-
-
 
 app.get('/list', async (req, res) => {
     try {
@@ -69,11 +65,9 @@ app.get('/list', async (req, res) => {
     }
 });
 
-
 app.get('/write', function(req, res){
     res.render('write.ejs')
 })
-
 
 app.post('/write', upload.single('image'), async (req, res) => {
     try {
@@ -193,8 +187,6 @@ app.post('/write', upload.single('image'), async (req, res) => {
         });
     }
 });
-
-
 
 app.get('/detail/:id', async (req, res) => {
     try {
