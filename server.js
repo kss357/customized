@@ -25,13 +25,19 @@ const url = process.env.DB_URL;
 
 // MongoDB 연결
 async function connectDB() {
-    if (db) return db;
-    
     try {
-        const client = await MongoClient.connect(process.env.DB_URL);
+        if (!process.env.DB_URL) {
+            throw new Error('Database URL is not defined in environment variables');
+        }
+        
+        const client = await MongoClient.connect(process.env.DB_URL, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 5000
+        });
+        
         console.log('MongoDB 연결 성공');
-        db = client.db('forum');
-        return db;
+        return client.db('forum');
     } catch (err) {
         console.error('MongoDB 연결 에러:', err);
         throw err;
@@ -41,11 +47,9 @@ async function connectDB() {
 // Vercel의 서버리스 환경을 위한 수정
 if (process.env.NODE_ENV !== 'production') {
     // 개발 환경에서만 서버 시작
-    const port = process.env.PORT || 8080;
+    const port = process.env.PORT || 3000;
     app.listen(port, () => {
         console.log(`Server is running on port ${port}`);
-        // 초기 DB 연결 시도
-        connectDB().catch(console.error);
     });
 }
 
