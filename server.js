@@ -5,11 +5,13 @@ const axios = require('axios');
 const FormData = require('form-data');
 require('dotenv').config();  // .env 파일 로드
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 // Express 설정
 app.use(express.static('public'));
 app.use(express.urlencoded({extended: true}));
 app.use(express.json());
+app.use(cookieParser());
 
 // View 엔진 설정
 app.set('view engine', 'ejs');
@@ -371,5 +373,48 @@ app.post('/api/like/:id', async (req, res) => {
     } catch (error) {
         console.error('Like error:', error);
         res.status(500).json({ success: false, message: '좋아요 처리 중 오류가 발생했습니다.' });
+    }
+});
+
+// 게시글 작성 API
+app.post('/api/posts', async (req, res) => {
+    try {
+        const { title, content } = req.body;
+        
+        // 쿠키에서 마지막 등록 시간 확인
+        const lastPostTime = req.cookies.lastPostTime;
+        const now = new Date();
+        
+        if (lastPostTime) {
+            const lastPost = new Date(lastPostTime);
+            const timeDiff = now - lastPost;
+            const hoursLeft = 24 - (timeDiff / (1000 * 60 * 60));
+            
+            if (hoursLeft > 0) {
+                return res.status(429).json({
+                    error: '하루에 한 번만 등록할 수 있습니다.',
+                    hoursLeft: Math.ceil(hoursLeft)
+                });
+            }
+        }
+
+        const post = new Post({
+            title,
+            content,
+            likes: 0
+        });
+
+        await post.save();
+        
+        // 쿠키 설정 (24시간)
+        res.cookie('lastPostTime', now.toISOString(), {
+            maxAge: 24 * 60 * 60 * 1000,
+            httpOnly: true
+        });
+
+        res.status(201).json(post);
+    } catch (error) {
+        console.error('게시글 작성 중 오류:', error);
+        res.status(500).json({ error: '게시글 작성 중 오류가 발생했습니다.' });
     }
 });
