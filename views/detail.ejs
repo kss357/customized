@@ -1,311 +1,231 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= 글내용.title %> - Forum</title>
-    <link rel="stylesheet" href="/main.css">
+    <title>게시물 상세</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body class="grey-bg">
-    <%- include('./nav') %>
-
-    <div class="container mt-4">
-        <div class="detail-card">
-            <div class="detail-header">
-                <h2 class="detail-title"><%= 글내용.title %></h2>
-                <div class="detail-meta">
-                    <span class="badge bg-primary"><%= 글내용.category %></span>
-                    <span class="author">작성자: <%= 글내용.author %></span>
-                    <span class="date">작성일: <%= new Date(글내용.createdAt).toLocaleDateString() %></span>
-                    <span class="views">조회수: <%= 글내용.views %></span>
-                    <span class="likes" onclick="toggleLike('<%= 글내용._id %>', this)">
-                        <%= 글내용.likes > 0 ? '❤️' : '🤍' %> <%= 글내용.likes %>
-                    </span>
-                </div>
-            </div>
-
-            <% if (글내용.imageUrl) { %>
-                <div class="detail-image">
-                    <img src="<%= 글내용.imageUrl %>" alt="게시물 이미지" class="img-fluid">
-                </div>
-            <% } %>
-
-            <div class="detail-content">
-                <p><%= 글내용.content %></p>
-            </div>
-
-            <% if (글내용.tags && 글내용.tags.length > 0) { %>
-                <div class="detail-tags">
-                    <% 글내용.tags.forEach(function(tag) { %>
-                        <span class="badge bg-light text-dark">#<%= tag %></span>
-                    <% }) %>
-                </div>
-            <% } %>
-
-            <div class="detail-actions">
-                <button class="btn btn-primary" onclick="location.href='/list'">목록으로</button>
-                <button class="btn btn-success" onclick="showEditForm()">수정</button>
-                <button class="btn btn-danger" onclick="deletePost('<%= 글내용._id %>')">삭제</button>
-            </div>
-        </div>
-
-        <!-- 수정 폼 모달 -->
-        <div class="modal fade" id="editModal" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">게시물 수정</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="editForm">
-                            <div class="mb-3">
-                                <label for="editTitle" class="form-label">제목</label>
-                                <input type="text" class="form-control" id="editTitle" value="<%= 글내용.title %>" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editCategory" class="form-label">카테고리</label>
-                                <select class="form-select" id="editCategory" required>
-                                    <option value="일반" <%= 글내용.category === '일반' ? 'selected' : '' %>>일반</option>
-                                    <option value="질문" <%= 글내용.category === '질문' ? 'selected' : '' %>>질문</option>
-                                    <option value="토론" <%= 글내용.category === '토론' ? 'selected' : '' %>>토론</option>
-                                    <option value="공지" <%= 글내용.category === '공지' ? 'selected' : '' %>>공지</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editContent" class="form-label">내용</label>
-                                <textarea class="form-control" id="editContent" rows="10" required><%= 글내용.content %></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editTags" class="form-label">태그</label>
-                                <input type="text" class="form-control" id="editTags" value="<%= 글내용.tags ? 글내용.tags.join(', ') : '' %>" placeholder="쉼표로 구분하여 입력">
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                        <button type="button" class="btn btn-primary" onclick="updatePost('<%= 글내용._id %>')">수정하기</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <style>
+        :root {
+            --color-background: #1A1A1A;
+            --color-surface: #242424;
+            --color-text: #FFFFFF;
+            --color-text-secondary: #B7B7C9;
+            --color-primary: #7B3AE4;
+            --color-border: #2D2D2D;
+            --content-width: 1080px;
+        }
+
+        body {
+            background-color: var(--color-background);
+            color: var(--color-text);
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-wrapper {
+            width: 100%;
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            margin-bottom: 40px;
+        }
+
+        .nav {
+            max-width: var(--content-width);
+            margin: 0 auto;
+            padding: 16px 0;
+        }
+
+        .nav-title {
+            color: var(--color-text);
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: var(--content-width);
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
         .detail-card {
-            background: white;
+            background: var(--color-surface);
             border-radius: 12px;
-            padding: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border: 1px solid var(--color-border);
+            padding: 32px;
+            margin-bottom: 24px;
         }
 
         .detail-header {
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 24px;
         }
 
         .detail-title {
-            font-size: 2rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 1rem;
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: var(--color-text);
         }
 
         .detail-meta {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 1rem;
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .detail-meta span {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .detail-image {
-            margin: 1.5rem 0;
-            text-align: center;
-        }
-
-        .detail-image img {
-            max-width: 100%;
-            max-height: 500px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            color: var(--color-text-secondary);
+            font-size: 14px;
+            margin-bottom: 24px;
         }
 
         .detail-content {
-            font-size: 1.1rem;
-            line-height: 1.8;
-            color: #333;
-            margin: 1.5rem 0;
+            color: var(--color-text);
+            line-height: 1.6;
+            margin-bottom: 24px;
         }
 
-        .detail-tags {
-            margin: 1.5rem 0;
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
+        .detail-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin: 24px 0;
         }
 
         .detail-actions {
             display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid #eee;
+            gap: 12px;
+            margin-top: 24px;
         }
 
         .btn {
-            padding: 0.5rem 1.5rem;
-            font-weight: 500;
-        }
-
-        .badge {
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-        }
-
-        .likes {
+            background: var(--color-primary);
+            color: var(--color-text);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
             cursor: pointer;
-            padding: 8px 12px;
-            border-radius: 20px;
+            transition: background-color 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #6429d0;
+        }
+
+        .btn-secondary {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+        }
+
+        .btn-secondary:hover {
+            background: #2d2d2d;
+        }
+
+        .like-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            color: var(--color-text);
+        }
+
+        .like-icon {
             transition: all 0.2s ease;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
+            opacity: 0.7;
+            width: 20px;
+            height: 20px;
         }
 
-        .likes:hover {
-            background-color: #fff0f3;
-            border-color: #ff4d6d;
-            transform: scale(1.05);
+        .like-icon.active {
+            opacity: 1;
+            filter: invert(53%) sepia(98%) saturate(3332%) hue-rotate(326deg) brightness(101%) contrast(96%);
         }
 
-        .likes.active {
-            background-color: #ffe0e6;
-            border-color: #ff4d6d;
-            color: #ff4d6d;
+        .code-block {
+            background: var(--color-background);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
         }
     </style>
+</head>
+<body>
+    <div class="nav-wrapper">
+        <div class="nav">
+            <div class="nav-title"><a href="/" style="text-decoration: none; color: inherit;">Customized</a></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="detail-card">
+            <div class="detail-header">
+                <h1 class="detail-title"><%= 글내용.title %></h1>
+                <div class="detail-meta">
+                    <span>작성자: <%= 글내용.author %></span>
+                    <span><%= new Date(글내용.createdAt).toLocaleString() %></span>
+                </div>
+            </div>
+
+            <% if (글내용.code) { %>
+                <div class="code-block"><%= 글내용.code %></div>
+            <% } %>
+
+            <div class="detail-content">
+                <%= 글내용.content %>
+            </div>
+
+            <% if (글내용.imageUrl) { %>
+                <img src="<%= 글내용.imageUrl %>" alt="게시물 이미지" class="detail-image">
+            <% } %>
+
+            <div class="detail-actions">
+                <button class="like-button" onclick="handleLike('<%= 글내용._id %>')">
+                    <img src="/images/heart-icon.svg" alt="좋아요" class="like-icon <%= 글내용.likedUsers?.includes(cookies.userId) ? 'active' : '' %>" />
+                    <span class="like-count"><%= 글내용.likeCount || 0 %></span>
+                </button>
+                <button class="btn btn-secondary" onclick="location.href='/<%= game %>'">목록으로</button>
+                <button class="btn" onclick="location.href='/<%= game %>/write'">글쓰기</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        let editModal;
-
-        document.addEventListener('DOMContentLoaded', function() {
-            editModal = new bootstrap.Modal(document.getElementById('editModal'));
-            
-            // 초기 좋아요 상태에 따라 active 클래스 추가
-            const likesElement = document.querySelector('.likes');
-            if (likesElement && likesElement.textContent.includes('❤️')) {
-                likesElement.classList.add('active');
-            }
-        });
-
-        function toggleLike(postId, element) {
-            // 클릭 효과를 위한 시각적 피드백
-            element.style.transform = 'scale(0.95)';
-            setTimeout(() => {
-                element.style.transform = 'scale(1.05)';
-            }, 100);
-            setTimeout(() => {
-                element.style.transform = 'scale(1)';
-            }, 200);
-
-            fetch(`/api/like/${postId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // 좋아요 상태에 따라 아이콘과 스타일 변경
-                    element.innerHTML = `${data.likes > 0 ? '❤️' : '🤍'} ${data.likes}`;
-                    if (data.likes > 0) {
-                        element.classList.add('active');
-                    } else {
-                        element.classList.remove('active');
+        async function handleLike(postId) {
+            try {
+                const response = await fetch(`/api/like/${postId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
                     }
-                } else {
-                    alert(data.message || '좋아요 처리에 실패했습니다.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('좋아요 처리 중 오류가 발생했습니다.');
-            });
-        }
-
-        function showEditForm() {
-            editModal.show();
-        }
-
-        function updatePost(id) {
-            const title = document.getElementById('editTitle').value;
-            const category = document.getElementById('editCategory').value;
-            const content = document.getElementById('editContent').value;
-            const tags = document.getElementById('editTags').value.split(',').map(tag => tag.trim()).filter(tag => tag);
-
-            if (!title || !content) {
-                alert('제목과 내용을 모두 입력해주세요.');
-                return;
-            }
-
-            fetch(`/edit/${id}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    title,
-                    category,
-                    content,
-                    tags
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('게시물이 수정되었습니다.');
-                    location.reload();
-                } else {
-                    alert(data.message || '수정에 실패했습니다.');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('수정 중 오류가 발생했습니다.');
-            });
-        }
-
-        function deletePost(id) {
-            if (confirm('정말로 이 게시물을 삭제하시겠습니까?')) {
-                fetch('/delete/' + id, {
-                    method: 'DELETE'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('게시물이 삭제되었습니다.');
-                        window.location.href = '/list';
-                    } else {
-                        alert(data.message || '삭제에 실패했습니다.');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('삭제 중 오류가 발생했습니다.');
                 });
+                
+                const data = await response.json();
+
+                if (data.success) {
+                    // 좋아요 수 업데이트
+                    const likeCount = document.querySelector('.like-count');
+                    const likeIcon = document.querySelector('.like-icon');
+                    
+                    likeCount.textContent = data.likes;
+                    
+                    // 아이콘 상태 토글
+                    if (data.isLiked) {
+                        likeIcon.classList.add('active');
+                    } else {
+                        likeIcon.classList.remove('active');
+                    }
+                }
+            } catch (error) {
+                console.error('Like error:', error);
+                alert('좋아요 처리 중 오류가 발생했습니다.');
             }
         }
     </script>
 
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

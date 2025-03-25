@@ -234,14 +234,13 @@
             flex-direction: column;
             gap: 12px;
             width: 100%;
-            height: calc(100% - 200px);
+            height: 120px;
             display: -webkit-box;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 3;
             line-clamp: 3;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-height: 4.5em; /* Fallback for non-WebKit browsers */
         }
 
         .card-info {
@@ -296,6 +295,7 @@
             gap: 16px;
             width: 100%;
             margin-top: auto;
+            padding-top: 12px;
         }
 
         .stat {
@@ -332,12 +332,22 @@
             font-weight: bold;
             font-size: 14px;
         }
+
+        .like-icon {
+            transition: all 0.2s ease;
+            opacity: 0.7;
+        }
+
+        .like-icon.active {
+            opacity: 1;
+            filter: invert(53%) sepia(98%) saturate(3332%) hue-rotate(326deg) brightness(101%) contrast(96%);
+        }
     </style>
 </head>
 <body>
     <div class="nav-wrapper">
         <div class="nav">
-            <div class="nav-title">Customized</div>
+            <div class="nav-title"><a href="/" style="text-decoration: none; color: inherit;">Customized</a></div>
         </div>
     </div>
 
@@ -379,7 +389,9 @@
                 <% for(let i = 0; i < 글목록.length; i++) { %>
                     <div class="card">
                         <div class="card-inner" onclick="location.href='/<%= game %>/detail/<%= 글목록[i]._id %>'">
-                            <img class="card-image" src="<%= 글목록[i].imageUrl || '/images/default-thumbnail.jpg' %>" alt="Card Image" />
+                            <img class="card-image" src="<%= 글목록[i].imageUrl || 'https://customized.b-cdn.net/default-thumbnail.jpg' %>" 
+                                 alt="<%= 글목록[i].title %>"
+                                 onerror="this.src='https://customized.b-cdn.net/default-thumbnail.jpg'" />
                             <% if (글목록[i].isNew) { %>
                                 <div class="new-badge">N</div>
                             <% } %>
@@ -390,9 +402,9 @@
                                     <div class="card-date"><%= new Date(글목록[i].createdAt).toLocaleDateString() %></div>
                                 </div>
                                 <div class="card-stats">
-                                    <div class="stat like-button" onclick="handleLike(event, '<%= 글목록[i]._id %>')">
-                                        <img src="/images/heart-icon.svg" alt="좋아요" />
-                                        <span class="stat-value"><%= 글목록[i].likes || 0 %></span>
+                                    <div class="stat like-button" onclick="handleLike(event, '<%= 글목록[i]._id.toString() %>')">
+                                        <img src="/images/heart-icon.svg" alt="좋아요" class="like-icon <%= 글목록[i].likedUsers?.includes(cookies.userId) ? 'active' : '' %>" />
+                                        <span class="stat-value"><%= 글목록[i].likeCount || 0 %></span>
                                     </div>
                                     <div class="stat">
                                         <img src="/images/view-icon.svg" alt="조회수" />
@@ -412,9 +424,10 @@
         async function handleLike(event, postId) {
             event.preventDefault();
             event.stopPropagation();
-            console.log('Like button clicked:', { postId });
             
             const likeButton = event.currentTarget;
+            const likeIcon = likeButton.querySelector('.like-icon');
+            const likeCount = likeButton.querySelector('.stat-value');
             
             try {
                 const response = await fetch(`/api/like/${postId}`, {
@@ -425,16 +438,17 @@
                 });
                 
                 const data = await response.json();
-                console.log('Like response:', data);
 
                 if (data.success) {
                     // 좋아요 수 업데이트
-                    const likeCount = likeButton.querySelector('.stat-value');
-                    const newCount = parseInt(likeCount.textContent) + 1;
-                    likeCount.textContent = newCount;
-                    console.log('Updated like count:', newCount);
-                } else {
-                    alert(data.message || '이미 좋아요를 누르셨습니다.');
+                    likeCount.textContent = data.likes;
+                    
+                    // 아이콘 상태 토글
+                    if (data.isLiked) {
+                        likeIcon.classList.add('active');
+                    } else {
+                        likeIcon.classList.remove('active');
+                    }
                 }
             } catch (error) {
                 console.error('Like error:', error);

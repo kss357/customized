@@ -70,6 +70,7 @@ app.get('/', (req, res) => {
 app.get('/:game', async (req, res) => {
     const game = req.params.game;
     const validGames = ['monster-hunter-wilds', 'lost-ark'];
+    const userCookie = req.cookies.userId;
     
     if (!validGames.includes(game)) {
         return res.redirect('/monster-hunter-wilds');
@@ -82,21 +83,21 @@ app.get('/:game', async (req, res) => {
         },
         'lost-ark': {
             title: 'Lost Ark',
-            heroImage: 'https://customized.b-cdn.net/lost-ark-hero.png' // 로스트아크 히어로 이미지 URL 필요
+            heroImage: 'https://customized.b-cdn.net/lost-ark-hero.png'
         }
     };
 
     const database = await connectDB();
     const page = parseInt(req.query.page) || 1;
-    const limit = 10; // 페이지당 게시물 수
+    const limit = 10;
     const skip = (page - 1) * limit;
 
     // 전체 게시물 수 조회
-    const totalPosts = await database.collection('post').countDocuments();
+    const totalPosts = await database.collection('post').countDocuments({ game: game });
     const totalPages = Math.ceil(totalPosts / limit);
 
     // 게시물 목록 조회 (페이지네이션 적용)
-    const posts = await database.collection('post').find()
+    const posts = await database.collection('post').find({ game: game })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -108,7 +109,8 @@ app.get('/:game', async (req, res) => {
         heroImage: gameInfo[game].heroImage,
         글목록: posts,
         totalPages,
-        currentPage: page
+        currentPage: page,
+        cookies: req.cookies
     });
 });
 
@@ -132,17 +134,45 @@ app.post('/:game/write', upload.single('image'), async (req, res) => {
         // 게시물 데이터 준비
         const post = {
             title: req.body.title,
+            code: req.body.code,
             content: req.body.content,
             author: req.body.author,
-            game: game, // 게임 정보 추가
+            game: game,
             createdAt: new Date(),
-            likes: 0,
+            likeCount: 0,
+            likedUsers: [],
             views: 0
         };
 
         // 이미지가 업로드된 경우
         if (req.file) {
-            post.imageUrl = req.file.location; // S3 URL
+            // 파일 이름에서 한글과 특수문자 제거
+            const originalName = req.file.originalname;
+            const sanitizedName = originalName.replace(/[^a-zA-Z0-9.]/g, '_');
+            const timestamp = Date.now();
+            const fileName = `${timestamp}_${sanitizedName}`;
+
+            const storageUrl = `https://sg.storage.bunnycdn.com/${process.env.BUNNY_STORAGE_ZONE}/`;
+            const fileUrl = storageUrl + fileName;
+
+            try {
+                // Bunny CDN에 이미지 업로드
+                await axios.put(fileUrl, req.file.buffer, {
+                    headers: {
+                        'AccessKey': process.env.BUNNY_ACCESS_KEY,
+                        'Content-Type': req.file.mimetype
+                    }
+                });
+
+                // 이미지 URL 설정
+                post.imageUrl = `${process.env.BUNNY_PULL_ZONE}/${fileName}`;
+            } catch (error) {
+                console.error('Image upload error:', error);
+                return res.status(500).send('이미지 업로드 중 오류가 발생했습니다.');
+            }
+        } else {
+            // 기본 이미지 URL 설정
+            post.imageUrl = 'https://customized.b-cdn.net/default-thumbnail.jpg';
         }
 
         // 게시물 저장
@@ -160,34 +190,25 @@ app.post('/:game/write', upload.single('image'), async (req, res) => {
 app.get('/:game/detail/:id', async (req, res) => {
     try {
         const database = await connectDB();
-        const postId = req.params.id;
         const game = req.params.game;
-        
-        // 게시물 조회
-        const post = await database.collection('post').findOne({ 
-            _id: new ObjectId(postId),
+        const result = await database.collection('post').findOne({ 
+            _id: new ObjectId(req.params.id),
             game: game
         });
-        
-        if (!post) {
-            // error 페이지 렌더링 대신 리다이렉트
-            return res.redirect(`/${game}`);
+
+        if (!result) {
+            res.status(404).send('게시물을 찾을 수 없습니다.');
+            return;
         }
 
-        // 조회수 증가
-        await database.collection('post').updateOne(
-            { _id: new ObjectId(postId) },
-            { $inc: { views: 1 } }
-        );
-
-        // 업데이트된 게시물 다시 조회
-        const updatedPost = await database.collection('post').findOne({ _id: new ObjectId(postId) });
-
-        res.render('detail', { 글내용: updatedPost, game: game });
+        res.render('detail', { 
+            글내용: result,
+            game: game,
+            cookies: req.cookies
+        });
     } catch (error) {
-        console.error('Detail Route Error:', error);
-        // error 페이지 렌더링 대신 리다이렉트
-        res.redirect(`/${req.params.game}`);
+        console.error('Error:', error);
+        res.status(500).send('서버 오류가 발생했습니다.');
     }
 });
 
@@ -300,7 +321,7 @@ app.post('/api/like/:id', async (req, res) => {
         // 이미 좋아요를 눌렀는지 확인
         const post = await database.collection('post').findOne({
             _id: new ObjectId(postId),
-            'likes.userId': userCookie
+            'likedUsers': userCookie
         });
 
         if (!post) {
@@ -308,20 +329,36 @@ app.post('/api/like/:id', async (req, res) => {
             await database.collection('post').updateOne(
                 { _id: new ObjectId(postId) },
                 { 
-                    $inc: { likes: 1 },
-                    $push: { likes: { userId: userCookie, timestamp: new Date() } }
+                    $inc: { likeCount: 1 },
+                    $push: { likedUsers: userCookie }
                 }
             );
-            
-            // 쿠키가 없다면 설정
-            if (!req.cookies.userId) {
-                res.cookie('userId', userCookie, { maxAge: 365 * 24 * 60 * 60 * 1000 }); // 1년
-            }
-            
-            res.json({ success: true });
         } else {
-            res.json({ success: false, message: '이미 좋아요를 누르셨습니다.' });
+            // 좋아요 취소
+            await database.collection('post').updateOne(
+                { _id: new ObjectId(postId) },
+                { 
+                    $inc: { likeCount: -1 },
+                    $pull: { likedUsers: userCookie }
+                }
+            );
         }
+        
+        // 쿠키가 없다면 설정
+        if (!req.cookies.userId) {
+            res.cookie('userId', userCookie, { maxAge: 365 * 24 * 60 * 60 * 1000 }); // 1년
+        }
+        
+        // 업데이트된 좋아요 수 조회
+        const updatedPost = await database.collection('post').findOne(
+            { _id: new ObjectId(postId) }
+        );
+        
+        res.json({ 
+            success: true, 
+            likes: updatedPost.likeCount || 0,
+            isLiked: !post // 좋아요 상태 반환
+        });
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
