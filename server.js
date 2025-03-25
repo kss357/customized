@@ -6,6 +6,7 @@ const FormData = require('form-data');
 require('dotenv').config();  // .env 파일 로드
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const crypto = require('crypto');
 
 // Express 설정
 app.use(express.static('public'));
@@ -60,173 +61,117 @@ app.listen(port, () => {
 // Vercel/Render 서버리스 함수를 위한 export
 module.exports = app;
 
-app.get('/', function(req, res){
-    res.redirect('/list');
+// 기본 경로 리다이렉트
+app.get('/', (req, res) => {
+    res.redirect('/monster-hunter-wilds');
 });
 
-app.get('/list', async (req, res) => {
-    try {
-        const database = await connectDB();
-        const page = parseInt(req.query.page) || 1;
-        const limit = 10; // 페이지당 게시물 수
-        const skip = (page - 1) * limit;
-
-        // 전체 게시물 수 조회
-        const totalPosts = await database.collection('post').countDocuments();
-        const totalPages = Math.ceil(totalPosts / limit);
-
-        // 게시물 목록 조회 (페이지네이션 적용)
-        const 글목록 = await database.collection('post').find()
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit)
-            .toArray();
-
-        res.render('list', { 
-            글목록,
-            totalPages,
-            currentPage: page
-        });
-    } catch (error) {
-        console.error('Error in /list:', error);
-        res.status(500).send('게시물 목록을 불러오는데 실패했습니다.');
+// 게임별 리스트 페이지
+app.get('/:game', async (req, res) => {
+    const game = req.params.game;
+    const validGames = ['monster-hunter-wilds', 'lost-ark'];
+    
+    if (!validGames.includes(game)) {
+        return res.redirect('/monster-hunter-wilds');
     }
+
+    const gameInfo = {
+        'monster-hunter-wilds': {
+            title: 'Monster Hunter Wilds',
+            heroImage: 'https://customized.b-cdn.net/hero2.png'
+        },
+        'lost-ark': {
+            title: 'Lost Ark',
+            heroImage: 'https://customized.b-cdn.net/lost-ark-hero.png' // 로스트아크 히어로 이미지 URL 필요
+        }
+    };
+
+    const database = await connectDB();
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10; // 페이지당 게시물 수
+    const skip = (page - 1) * limit;
+
+    // 전체 게시물 수 조회
+    const totalPosts = await database.collection('post').countDocuments();
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    // 게시물 목록 조회 (페이지네이션 적용)
+    const posts = await database.collection('post').find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+
+    res.render('list', {
+        game: game,
+        gameTitle: gameInfo[game].title,
+        heroImage: gameInfo[game].heroImage,
+        글목록: posts,
+        totalPages,
+        currentPage: page
+    });
 });
 
-app.get('/write', function(req, res){
-    res.render('write.ejs')
-})
+// 게임별 글쓰기 페이지
+app.get('/:game/write', (req, res) => {
+    const game = req.params.game;
+    const validGames = ['monster-hunter-wilds', 'lost-ark'];
+    
+    if (!validGames.includes(game)) {
+        return res.redirect('/monster-hunter-wilds');
+    }
 
-app.post('/write', upload.single('image'), async (req, res) => {
+    res.render('write', { game: game });
+});
+
+app.post('/:game/write', upload.single('image'), async (req, res) => {
     try {
         const database = await connectDB();
-        console.log('=== Write Route Start ===');
-        console.log('Request body:', req.body);
-        console.log('Request file:', req.file ? {
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size
-        } : 'No file uploaded');
+        const game = req.params.game;
         
-        let imageUrl = null;
-        
-        // 이미지가 있는 경우 업로드 처리
-        if (req.file) {
-            const file = req.file;
-            // 파일명에서 한글과 특수문자 제거, 확장자만 유지
-            const originalName = file.originalname;
-            const extension = originalName.split('.').pop().toLowerCase();
-            const sanitizedName = originalName.replace(/[^a-zA-Z0-9.]/g, '_');
-            const timestamp = Date.now();
-            const fileName = `${timestamp}_${sanitizedName}`;
-            
-            console.log('=== File Processing ===');
-            console.log('Original filename:', originalName);
-            console.log('File extension:', extension);
-            console.log('Sanitized filename:', fileName);
-            
-            try {
-                const uploadUrl = `https://sg.storage.bunnycdn.com/${BUNNY_STORAGE_ZONE}/${fileName}`;
-                console.log('Attempting upload to:', uploadUrl);
-                console.log('Using AccessKey:', BUNNY_ACCESS_KEY.substring(0, 10) + '...');
-                
-                // 파일 버퍼 확인
-                if (!file.buffer || file.buffer.length === 0) {
-                    throw new Error('File buffer is empty');
-                }
-
-                const response = await axios.put(
-                    uploadUrl,
-                    file.buffer,
-                    {
-                        headers: {
-                            'AccessKey': BUNNY_ACCESS_KEY,
-                            'Content-Type': file.mimetype
-                        },
-                        maxContentLength: Infinity,
-                        maxBodyLength: Infinity
-                    }
-                );
-                
-                console.log('Upload response:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    headers: response.headers
-                });
-                
-                // 200 또는 201 상태 코드 모두 성공으로 처리
-                if (response.status === 200 || response.status === 201) {
-                    imageUrl = `${BUNNY_PULL_ZONE}/${fileName}`;
-                    console.log('Successfully generated image URL:', imageUrl);
-                } else {
-                    throw new Error(`Upload failed with status ${response.status}`);
-                }
-            } catch (error) {
-                console.error('=== Bunny.net Upload Error ===');
-                console.error('Error message:', error.message);
-                console.error('Error response:', {
-                    status: error.response?.status,
-                    statusText: error.response?.statusText,
-                    data: error.response?.data
-                });
-                return res.status(500).json({ 
-                    success: false, 
-                    message: '이미지 업로드에 실패했습니다.',
-                    error: error.response?.data || error.message
-                });
-            }
-        }
-
-        // 태그 처리
-        const tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [];
-        console.log('Processed tags:', tags);
-
-        // 게시물 저장
+        // 게시물 데이터 준비
         const post = {
             title: req.body.title,
             content: req.body.content,
-            category: req.body.category,
-            author: req.body.author || '익명',
-            imageUrl: imageUrl,
-            tags: tags,
-            views: 0,
-            likes: 0,
+            author: req.body.author,
+            game: game, // 게임 정보 추가
             createdAt: new Date(),
-            updatedAt: new Date()
+            likes: 0,
+            views: 0
         };
 
-        console.log('=== Saving Post to Database ===');
-        console.log('Post data:', post);
+        // 이미지가 업로드된 경우
+        if (req.file) {
+            post.imageUrl = req.file.location; // S3 URL
+        }
 
+        // 게시물 저장
         const result = await database.collection('post').insertOne(post);
-        console.log('Database save result:', result);
-
-        res.status(200).json({ 
-            success: true,
-            message: '게시물이 성공적으로 작성되었습니다.',
-            postId: result.insertedId
-        });
+        
+        // 작성 완료 후 해당 게임의 목록 페이지로 리다이렉트
+        res.redirect(`/${game}`);
     } catch (error) {
-        console.error('=== Write Route Error ===');
-        console.error('Error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: '게시물 작성에 실패했습니다.',
-            error: error.message
-        });
+        console.error('Write Error:', error);
+        res.status(500).send('게시물 작성 중 오류가 발생했습니다.');
     }
 });
 
-app.get('/detail/:id', async (req, res) => {
+// 게임별 상세 페이지
+app.get('/:game/detail/:id', async (req, res) => {
     try {
         const database = await connectDB();
         const postId = req.params.id;
+        const game = req.params.game;
         
         // 게시물 조회
-        const post = await database.collection('post').findOne({ _id: new ObjectId(postId) });
+        const post = await database.collection('post').findOne({ 
+            _id: new ObjectId(postId),
+            game: game
+        });
         
         if (!post) {
-            return res.status(404).render('error', { message: '게시물을 찾을 수 없습니다.' });
+            // error 페이지 렌더링 대신 리다이렉트
+            return res.redirect(`/${game}`);
         }
 
         // 조회수 증가
@@ -238,10 +183,11 @@ app.get('/detail/:id', async (req, res) => {
         // 업데이트된 게시물 다시 조회
         const updatedPost = await database.collection('post').findOne({ _id: new ObjectId(postId) });
 
-        res.render('detail', { 글내용: updatedPost });
+        res.render('detail', { 글내용: updatedPost, game: game });
     } catch (error) {
         console.error('Detail Route Error:', error);
-        res.status(500).render('error', { message: '게시물을 불러오는 중 오류가 발생했습니다.' });
+        // error 페이지 렌더링 대신 리다이렉트
+        res.redirect(`/${req.params.game}`);
     }
 });
 
@@ -346,42 +292,76 @@ app.post('/upload', upload.single('image'), async function(req, res) {
 
 // 좋아요 API
 app.post('/api/like/:id', async (req, res) => {
+    const postId = req.params.id;
+    const userCookie = req.cookies.userId || crypto.randomUUID();
+    
     try {
         const database = await connectDB();
-        const postId = req.params.id;
-        
-        // 현재 게시물 조회
-        const post = await database.collection('post').findOne({ _id: new ObjectId(postId) });
-        
-        if (!post) {
-            return res.status(404).json({ success: false, message: '게시물을 찾을 수 없습니다.' });
-        }
-
-        // 현재 좋아요 수를 토글 (0이면 1로, 1이면 0으로)
-        const newLikes = post.likes === 1 ? 0 : 1;
-        
-        // 좋아요 수 업데이트
-        await database.collection('post').updateOne(
-            { _id: new ObjectId(postId) },
-            { $set: { likes: newLikes } }
-        );
-
-        res.json({ 
-            success: true, 
-            likes: newLikes
+        // 이미 좋아요를 눌렀는지 확인
+        const post = await database.collection('post').findOne({
+            _id: new ObjectId(postId),
+            'likes.userId': userCookie
         });
+
+        if (!post) {
+            // 좋아요 추가
+            await database.collection('post').updateOne(
+                { _id: new ObjectId(postId) },
+                { 
+                    $inc: { likes: 1 },
+                    $push: { likes: { userId: userCookie, timestamp: new Date() } }
+                }
+            );
+            
+            // 쿠키가 없다면 설정
+            if (!req.cookies.userId) {
+                res.cookie('userId', userCookie, { maxAge: 365 * 24 * 60 * 60 * 1000 }); // 1년
+            }
+            
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, message: '이미 좋아요를 누르셨습니다.' });
+        }
     } catch (error) {
-        console.error('Like error:', error);
-        res.status(500).json({ success: false, message: '좋아요 처리 중 오류가 발생했습니다.' });
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 });
 
-// 게시글 작성 API
-app.post('/api/posts', async (req, res) => {
+// 임시: 모든 데이터 삭제 라우트
+app.get('/clear-all-data/:game', async (req, res) => {
     try {
-        const { title, content } = req.body;
+        const game = req.params.game;
+        const validGames = ['monster-hunter-wilds', 'lost-ark'];
         
-        // 쿠키에서 마지막 등록 시간 확인
+        if (!validGames.includes(game)) {
+            return res.status(400).json({ error: '유효하지 않은 게임입니다.' });
+        }
+
+        const database = await connectDB();
+        await database.collection('post').deleteMany({ game: game });
+        res.json({ message: `${game} 게시판의 모든 데이터가 삭제되었습니다.` });
+    } catch (error) {
+        console.error('데이터 삭제 중 오류:', error);
+        res.status(500).json({ error: '데이터 삭제 중 오류가 발생했습니다.' });
+    }
+});
+
+// 임시: 전체 데이터 삭제 라우트
+app.get('/clear-all-data', async (req, res) => {
+    try {
+        const database = await connectDB();
+        await database.collection('post').deleteMany({});
+        res.json({ message: '모든 게임의 데이터가 삭제되었습니다.' });
+    } catch (error) {
+        console.error('데이터 삭제 중 오류:', error);
+        res.status(500).json({ error: '데이터 삭제 중 오류가 발생했습니다.' });
+    }
+});
+
+// 하루 제한 체크 API
+app.get('/check-daily-limit', (req, res) => {
+    try {
         const lastPostTime = req.cookies.lastPostTime;
         const now = new Date();
         
@@ -391,30 +371,17 @@ app.post('/api/posts', async (req, res) => {
             const hoursLeft = 24 - (timeDiff / (1000 * 60 * 60));
             
             if (hoursLeft > 0) {
-                return res.status(429).json({
-                    error: '하루에 한 번만 등록할 수 있습니다.',
+                return res.json({
+                    canWrite: false,
                     hoursLeft: Math.ceil(hoursLeft)
                 });
             }
         }
-
-        const post = new Post({
-            title,
-            content,
-            likes: 0
-        });
-
-        await post.save();
         
-        // 쿠키 설정 (24시간)
-        res.cookie('lastPostTime', now.toISOString(), {
-            maxAge: 24 * 60 * 60 * 1000,
-            httpOnly: true
-        });
-
-        res.status(201).json(post);
+        res.json({ canWrite: true });
     } catch (error) {
-        console.error('게시글 작성 중 오류:', error);
-        res.status(500).json({ error: '게시글 작성 중 오류가 발생했습니다.' });
+        console.error('하루 제한 체크 중 오류:', error);
+        res.status(500).json({ error: '하루 제한 체크 중 오류가 발생했습니다.' });
     }
 });
+

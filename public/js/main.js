@@ -2,16 +2,12 @@
 async function createPost(event) {
     event.preventDefault();
     
-    const title = document.getElementById('title').value;
-    const content = document.getElementById('content').value;
+    const formData = new FormData(event.target);
     
     try {
-        const response = await fetch('/api/posts', {
+        const response = await fetch('/write', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ title, content })
+            body: formData
         });
         
         const data = await response.json();

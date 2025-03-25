@@ -14,7 +14,7 @@
         <div class="write-card">
             <h1 class="write-title">새 게시물 작성</h1>
             
-            <form action="/write" method="POST" enctype="multipart/form-data" class="write-form" id="writeForm">
+            <form action="/<%= game %>/write" method="POST" enctype="multipart/form-data" class="write-form" id="writeForm">
                 <div class="form-group">
                     <label for="title" class="form-label">제목</label>
                     <input type="text" class="form-control" id="title" name="title" required>
@@ -165,41 +165,40 @@
             }
         });
 
-        // 폼 제출 전 처리
+        // 폼 제출 처리
         document.getElementById('writeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const formData = new FormData(this);
+            // 제출 버튼 비활성화
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 작성 중...';
             
             try {
-                console.log('=== Form Submission Start ===');
-                console.log('Form data:', {
-                    title: formData.get('title'),
-                    category: formData.get('category'),
-                    content: formData.get('content'),
-                    image: formData.get('image')?.name,
-                    tags: formData.get('tags')
-                });
-                
-                const response = await fetch('/write', {
+                const formData = new FormData(this);
+                const response = await fetch(this.action, {
                     method: 'POST',
                     body: formData
                 });
                 
-                console.log('Response status:', response.status);
-                const result = await response.json();
-                console.log('Response data:', result);
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
                 
+                const result = await response.json();
                 if (result.success) {
-                    alert('게시물이 작성되었습니다.');
-                    window.location.href = '/list';
+                    window.location.href = '/<%= game %>';
                 } else {
-                    console.error('Submission failed:', result);
                     alert(result.message || '게시물 작성에 실패했습니다.');
                 }
             } catch (error) {
-                console.error('Form submission error:', error);
+                console.error('Error:', error);
                 alert('게시물 작성 중 오류가 발생했습니다.');
+            } finally {
+                // 제출 버튼 다시 활성화
+                submitButton.disabled = false;
+                submitButton.innerHTML = '작성하기';
             }
         });
     </script>
