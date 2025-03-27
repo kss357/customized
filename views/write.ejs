@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>게시물 작성</title>
+    <title><%= mode === 'edit' ? '게시물 수정' : '새 게시물 작성' %></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
@@ -82,6 +82,10 @@
             color: var(--color-text);
         }
 
+        .form-control::placeholder {
+            color: var(--color-text-secondary);
+        }
+
         .form-control:focus {
             outline: none;
             border-color: var(--color-primary);
@@ -93,23 +97,87 @@
             resize: vertical;
         }
 
-        button[type="submit"] {
-            background: var(--color-primary);
-            color: var(--color-text);
+        .submit-button {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            background: var(--Color-Primary-500, #5F32E6);
             border: none;
-            padding: 12px 24px;
             border-radius: 8px;
-            font-weight: bold;
+            color: white;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
         }
 
-        button[type="submit"]:hover {
-            background-color: #6429d0;
+        .submit-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .submit-button .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+
+        .submit-button.loading .spinner {
+            display: inline-block;
+        }
+
+        .submit-button.loading span {
+            opacity: 0.7;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         .code-input {
             font-family: 'Consolas', monospace;
+        }
+
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .password-toggle path {
+            fill: var(--color-text-secondary);
+        }
+
+        .password-toggle:hover path {
+            fill: var(--color-text);
+        }
+
+        #password {
+            padding-right: 44px;
         }
     </style>
 </head>
@@ -121,86 +189,94 @@
     </div>
 
     <div class="container">
-        <h1 class="write-title">새 게시물 작성</h1>
+        <h1 class="write-title"><%= mode === 'edit' ? '게시물 수정' : '새 게시물 작성' %></h1>
         
-        <form action="/<%= game %>/write" method="POST" enctype="multipart/form-data" class="write-form" id="writeForm">
+        <form action="<%= mode === 'edit' ? `/${game}/edit/${post._id}?password=${password}` : `/${game}/write` %>" method="POST" enctype="multipart/form-data" class="write-form" id="writeForm">
             <div class="form-group">
                 <label for="title" class="form-label">제목</label>
-                <input type="text" id="title" name="title" class="form-control" required>
+                <input type="text" id="title" name="title" class="form-control" required value="<%= post ? post.title : '' %>">
             </div>
 
             <div class="form-group">
                 <label for="code" class="form-label">코드</label>
-                <input type="text" id="code" name="code" class="form-control" required>
+                <input type="text" id="code" name="code" class="form-control" required value="<%= post ? post.code : '' %>">
             </div>
 
             <div class="form-group">
                 <label for="content" class="form-label">내용</label>
-                <textarea id="content" name="content" class="form-control" required></textarea>
+                <textarea id="content" name="content" class="form-control" required><%= post ? post.content : '' %></textarea>
             </div>
 
             <div class="form-group">
                 <label for="image" class="form-label">이미지</label>
-                <input type="file" id="image" name="image" class="form-control" accept="image/*">
+                <input type="file" id="image" name="image" class="form-control" accept="image/*" <%= mode === 'write' ? 'required' : '' %>>
+                <% if (post && post.imageUrl) { %>
+                    <div class="current-image mt-2">
+                        <p>현재 이미지:</p>
+                        <img src="<%= post.imageUrl %>" alt="Current Image" style="max-width: 200px;">
+                    </div>
+                <% } %>
             </div>
 
             <div class="form-group">
                 <label for="author" class="form-label">작성자</label>
-                <input type="text" id="author" name="author" class="form-control">
+                <input type="text" id="author" name="author" class="form-control" required value="<%= post ? post.author : '' %>" <%= mode === 'edit' ? 'readonly' : '' %>>
             </div>
 
-            <button type="submit">작성하기</button>
+            <div class="form-group">
+                <label for="password" class="form-label">비밀번호</label>
+                <div class="password-wrapper">
+                    <input type="password" id="password" name="password" class="form-control" required <%= mode === 'edit' ? 'readonly' : '' %> value="<%= mode === 'edit' && password ? password : '' %>">
+                    <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-button">
+                <div class="spinner"></div>
+                <span><%= mode === 'edit' ? '수정하기' : '작성하기' %></span>
+            </button>
         </form>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
     <script>
-        // 랜덤 작성자 ID 생성
-        function generateRandomId() {
-            const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
-            return `Customizer-${random}`;
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+            } else {
+                passwordInput.type = 'password';
+            }
         }
 
-        // 페이지 로드 시 작성자 기본값 설정
-        document.getElementById('author').value = generateRandomId();
-
-        // 폼 제출 처리
-        document.getElementById('writeForm').addEventListener('submit', async function(e) {
+        document.querySelector('form').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // 제출 버튼 비활성화
-            const submitButton = this.querySelector('button[type="submit"]');
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 작성 중...';
+            const submitButton = document.querySelector('.submit-button');
             
-            try {
-                const formData = new FormData(this);
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return;
-                }
-                
-                const result = await response.json();
-                if (result.success) {
-                    window.location.href = '/<%= game %>';
-                } else {
-                    alert(result.message || '게시물 작성에 실패했습니다.');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('게시물 작성 중 오류가 발생했습니다.');
-            } finally {
-                // 제출 버튼 다시 활성화
-                submitButton.disabled = false;
-                submitButton.innerHTML = '작성하기';
+            // 이미 제출 중이면 중복 제출 방지
+            if (submitButton.disabled) {
+                return;
             }
+
+            // 수정 모드가 아닐 때만 비밀번호 해시화
+            const passwordInput = document.getElementById('password');
+            if (!passwordInput.readOnly && passwordInput.value) {
+                passwordInput.value = CryptoJS.SHA256(passwordInput.value).toString();
+            }
+
+            // 버튼 로딩 상태로 변경
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+
+            // 폼 제출
+            this.submit();
         });
     </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
