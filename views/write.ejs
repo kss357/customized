@@ -223,17 +223,19 @@
                 <input type="text" id="author" name="author" class="form-control" required value="<%= post ? post.author : '' %>" <%= mode === 'edit' ? 'readonly' : '' %>>
             </div>
 
-            <div class="form-group">
-                <label for="password" class="form-label">비밀번호</label>
-                <div class="password-wrapper">
-                    <input type="password" id="password" name="password" class="form-control" required <%= mode === 'edit' ? 'readonly' : '' %> value="<%= mode === 'edit' && password ? password : '' %>">
-                    <button type="button" class="password-toggle" onclick="togglePassword()">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-                        </svg>
-                    </button>
+            <% if (mode === 'write') { %>
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <div class="password-wrapper">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="비밀번호를 입력하세요" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M10 4.16667C6.3181 4.16667 3.33333 6.66667 2.5 10C3.33333 13.3333 6.3181 15.8333 10 15.8333C13.6819 15.8333 16.6667 13.3333 17.5 10C16.6667 6.66667 13.6819 4.16667 10 4.16667ZM10 13.3333C8.61929 13.3333 7.5 12.214 7.5 10.8333C7.5 9.45262 8.61929 8.33333 10 8.33333C11.3807 8.33333 12.5 9.45262 12.5 10.8333C12.5 12.214 11.3807 13.3333 10 13.3333Z" fill="#7B7A8E"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-            </div>
+            <% } %>
 
             <button type="submit" class="submit-button">
                 <div class="spinner"></div>
@@ -264,10 +266,12 @@
                 return;
             }
 
-            // 수정 모드가 아닐 때만 비밀번호 해시화
-            const passwordInput = document.getElementById('password');
-            if (!passwordInput.readOnly && passwordInput.value) {
-                passwordInput.value = CryptoJS.SHA256(passwordInput.value).toString();
+            // 작성 모드일 때만 비밀번호 해시화
+            if (document.querySelector('input[name="password"]')) {
+                const passwordInput = document.getElementById('password');
+                if (passwordInput.value) {
+                    passwordInput.value = CryptoJS.SHA256(passwordInput.value).toString();
+                }
             }
 
             // 버튼 로딩 상태로 변경

@@ -580,7 +580,7 @@
                                 </svg>
                                 코드 복사
                             </button>
-                            <button class="btn-edit" onclick="handleEdit('<%= 글내용._id %>')">수정</button>
+                            <button class="btn-edit" onclick="handleEdit('<%= 글내용._id %>', '<%= game %>')">수정</button>
                             <button class="btn-delete" onclick="handleDelete('<%= 글내용._id %>')">삭제</button>
                         </div>
                         <div class="detail-actions-right">
@@ -611,66 +611,23 @@
     <div class="comments-section">
         <div class="comments-header">
             <span class="comments-title">댓글</span>
-            <span class="comments-count">6</span>
+            <span class="comments-count"><%= 글내용.commentCount || 0 %></span>
         </div>
         <div class="comment-form">
             <div class="comment-form-inputs">
-                <input type="text" class="comment-input" placeholder="작성자" style="width: 200px;">
-                <input type="password" class="comment-input" placeholder="비밀번호" style="width: 200px;">
+                <input type="text" id="commentAuthor" class="comment-input" placeholder="작성자" style="width: 200px;">
+                <input type="password" id="commentPassword" class="comment-input" placeholder="비밀번호" style="width: 200px;">
             </div>
             <div class="comment-textarea-wrapper">
-                <textarea class="comment-textarea" placeholder="댓글을 입력하세요"></textarea>
-                <button class="comment-submit">등록</button>
+                <textarea id="commentContent" class="comment-textarea" placeholder="댓글을 입력하세요"></textarea>
+                <button class="comment-submit" onclick="submitComment()">등록</button>
             </div>
         </div>
 
-        <div class="comments-list">
-            <!-- 댓글 아이템 예시 -->
-            <div class="comment-item">
-                <div class="comment-header">
-                    <div class="comment-info">
-                        <span class="comment-author">joooy1365</span>
-                        <span class="comment-date">2025.03.13</span>
-                    </div>
-                    <button class="comment-delete">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 16 16" fill="none">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12.3636 2.66675L13.3333 3.63644L8.96966 8.00008L13.3333 12.3637L12.3636 13.3334L7.99996 8.96978L3.63632 13.3334L2.66663 12.3637L7.03026 8.00008L2.66663 3.63644L3.63632 2.66675L7.99996 7.03038L12.3636 2.66675Z" fill="#7B7A8E"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="comment-content">이 정도면 본헌에 침착맨 NPC 추가된 거 아닌가요? ㅋㅋㅋㅋ 현실 고증 무엇</div>
-            </div>
-            <div class="comment-divider"></div>
-
-            <div class="comment-item">
-                <div class="comment-header">
-                    <div class="comment-info">
-                        <span class="comment-author">sweetybbo</span>
-                        <span class="comment-date">2025.03.13</span>
-                    </div>
-                    <button class="comment-delete">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12.3636 2.66675L13.3333 3.63644L8.96966 8.00008L13.3333 12.3637L12.3636 13.3334L7.99996 8.96978L3.63632 13.3334L2.66663 12.3637L7.03026 8.00008L2.66663 3.63644L3.63632 2.66675L7.99996 7.03038L12.3636 2.66675Z" fill="#7B7A8E"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="comment-content">이 정도면 몬스터보다 사냥꾼 얼굴 커마가 더 빡센 게임 아닌니까? 대박</div>
-            </div>
-            <div class="comment-divider"></div>
-
-            <div class="comment-item">
-                <div class="comment-header">
-                    <div class="comment-info">
-                        <span class="comment-author">zjtmxjakdlwld_tkdlxm</span>
-                        <span class="comment-date">2025.03.13</span>
-                    </div>
-                    <button class="comment-delete">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12.3636 2.66675L13.3333 3.63644L8.96966 8.00008L13.3333 12.3637L12.3636 13.3334L7.99996 8.96978L3.63632 13.3334L2.66663 12.3637L7.03026 8.00008L2.66663 3.63644L3.63632 2.66675L7.99996 7.03038L12.3636 2.66675Z" fill="#7B7A8E"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="comment-content">이 정도면 본헌에 침착맨 NPC 추가된 거 아닌가요? ㅋㅋㅋㅋ 현실 고증 무엇</div>
+        <div class="comments-list" id="commentsList">
+            <!-- 댓글이 없을 때 표시 -->
+            <div class="no-comments" style="text-align: center; padding: 20px; color: var(--color-text-secondary);">
+                댓글이 없습니다.
             </div>
         </div>
     </div>
@@ -807,7 +764,7 @@
                 // 비밀번호 해시화
                 const hashedPassword = CryptoJS.SHA256(password).toString();
 
-                // 비밀번호 검증 요청
+                // 비밀번호 검증
                 const response = await fetch(`/api/verify-password/${postId}`, {
                     method: 'POST',
                     headers: {
@@ -820,7 +777,7 @@
                 
                 if (data.isValid) {
                     // 검증 성공 시 수정 페이지로 이동 (해시된 비밀번호 전달)
-                    window.location.href = `edit/${postId}?password=${hashedPassword}`;
+                    window.location.href = `/<%= game %>/edit/${postId}?password=${hashedPassword}`;
                 } else {
                     window.alert('비밀번호가 일치하지 않습니다.');
                 }
@@ -860,6 +817,129 @@
                 window.alert('오류가 발생했습니다.');
             }
         }
+
+        // 댓글 목록 로드
+        async function loadComments() {
+            try {
+                const response = await fetch(`/api/comments/<%= 글내용._id %>`);
+                const data = await response.json();
+                
+                const commentsList = document.getElementById('commentsList');
+                if (data.comments && data.comments.length > 0) {
+                    commentsList.innerHTML = data.comments.map(comment => `
+                        <div class="comment-item">
+                            <div class="comment-header">
+                                <div class="comment-info">
+                                    <span class="comment-author">${comment.author}</span>
+                                    <span class="comment-date">${new Date(comment.createdAt).toLocaleString()}</span>
+                                </div>
+                                <button class="comment-delete" onclick="deleteComment('${comment._id}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                        <path fill-rule="evenodd" clip-rule="evenodd" d="M12.3636 2.66675L13.3333 3.63644L8.96966 8.00008L13.3333 12.3637L12.3636 13.3334L7.99996 8.96978L3.63632 13.3334L2.66663 12.3637L7.03026 8.00008L2.66663 3.63644L3.63632 2.66675L7.99996 7.03038L12.3636 2.66675Z" fill="#7B7A8E"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="comment-content">${comment.content}</div>
+                            <div class="comment-divider"></div>
+                        </div>
+                    `).join('');
+                } else {
+                    commentsList.innerHTML = '<div class="no-comments" style="text-align: center; padding: 20px; color: var(--color-text-secondary);">댓글이 없습니다.</div>';
+                }
+            } catch (error) {
+                console.error('댓글 로드 중 오류:', error);
+            }
+        }
+
+        // 댓글 작성
+        async function submitComment() {
+            const author = document.getElementById('commentAuthor').value.trim();
+            const password = document.getElementById('commentPassword').value.trim();
+            const content = document.getElementById('commentContent').value.trim();
+            
+            if (!author || !password || !content) {
+                alert('작성자, 비밀번호, 댓글 내용을 모두 입력해주세요.');
+                return;
+            }
+
+            const submitButton = document.querySelector('.comment-submit');
+            submitButton.disabled = true;
+
+            try {
+                const response = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        postId: '<%= 글내용._id %>',
+                        author,
+                        password,
+                        content
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 입력 필드 초기화
+                    document.getElementById('commentAuthor').value = '';
+                    document.getElementById('commentPassword').value = '';
+                    document.getElementById('commentContent').value = '';
+                    
+                    // 댓글 목록 새로고침
+                    await loadComments();
+                    
+                    // 댓글 수 업데이트
+                    const commentsCount = document.querySelector('.comments-count');
+                    const currentCount = parseInt(commentsCount.textContent);
+                    commentsCount.textContent = currentCount + 1;
+                } else {
+                    alert('댓글 작성에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('댓글 작성 중 오류:', error);
+                alert('댓글 작성 중 오류가 발생했습니다.');
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
+        // 댓글 삭제
+        async function deleteComment(commentId) {
+            const password = window.prompt('댓글 비밀번호를 입력해주세요.');
+            if (!password) return;
+
+            try {
+                const response = await fetch(`/api/comments/${commentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 댓글 목록 새로고침
+                    await loadComments();
+                    
+                    // 댓글 수 업데이트
+                    const commentsCount = document.querySelector('.comments-count');
+                    const currentCount = parseInt(commentsCount.textContent);
+                    commentsCount.textContent = currentCount - 1;
+                } else {
+                    alert('비밀번호가 일치하지 않습니다.');
+                }
+            } catch (error) {
+                console.error('댓글 삭제 중 오류:', error);
+                alert('댓글 삭제 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 페이지 로드 시 댓글 목록 로드
+        document.addEventListener('DOMContentLoaded', loadComments);
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

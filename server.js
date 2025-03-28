@@ -614,27 +614,29 @@ app.post('/api/delete-post/:id', async (req, res) => {
 // 게시물 수정 페이지
 app.get('/:game/edit/:id', async (req, res) => {
     try {
+        const { game, id } = req.params;
+        const { password } = req.query;
+
         const database = await connectDB();
         const post = await database.collection('post').findOne({ 
-            _id: new ObjectId(req.params.id) 
+            _id: new ObjectId(id),
+            game: game
         });
 
         if (!post) {
-            return res.status(404).send('게시물을 찾을 수 없습니다.');
+            return res.redirect(`/${game}`);
         }
 
         // 비밀번호 검증
-        const hashedInputPassword = hashPassword(req.query.password);
-        if (post.password !== hashedInputPassword) {
-            return res.status(403).send('비밀번호가 일치하지 않습니다.');
+        if (post.password !== password) {
+            return res.redirect(`/${game}`);
         }
 
-        // write.ejs 템플릿에 기존 데이터를 전달
-        res.render('write.ejs', { 
-            post,
-            game: req.params.game,
+        res.render('write', { 
+            post, 
+            game,
             mode: 'edit',
-            password: req.query.password // 원본 비밀번호 전달
+            password
         });
     } catch (error) {
         console.error('Edit page error:', error);
@@ -645,27 +647,24 @@ app.get('/:game/edit/:id', async (req, res) => {
 // 게시물 수정 처리
 app.post('/:game/edit/:id', upload.single('image'), async (req, res) => {
     try {
+        const { game, id } = req.params;
+        const { title, content, author, code, password } = req.body;
+        let imageUrl = null;
+
+        // 게시물 데이터 가져오기
         const database = await connectDB();
         const post = await database.collection('post').findOne({ 
-            _id: new ObjectId(req.params.id) 
+            _id: new ObjectId(id),
+            game: game
         });
 
         if (!post) {
-            return res.status(404).send('게시물을 찾을 수 없습니다.');
+            return res.redirect(`/${game}`);
         }
 
-        // 비밀번호 검증
-        const hashedInputPassword = hashPassword(req.body.password);
-        if (post.password !== hashedInputPassword) {
-            return res.status(403).send('비밀번호가 일치하지 않습니다.');
-        }
-
-        let imageUrl = post.imageUrl; // 기존 이미지 URL 유지
-
-        // 새 이미지가 업로드된 경우
+        // 이미지 업로드 처리
         if (req.file) {
             try {
-                // 파일 이름에서 한글과 특수문자 제거
                 const originalName = req.file.originalname;
                 const sanitizedName = originalName.replace(/[^a-zA-Z0-9.]/g, '_');
                 const timestamp = Date.now();
@@ -674,7 +673,6 @@ app.post('/:game/edit/:id', upload.single('image'), async (req, res) => {
                 const storageUrl = `https://sg.storage.bunnycdn.com/${process.env.BUNNY_STORAGE_ZONE}/`;
                 const fileUrl = storageUrl + fileName;
 
-                // Bunny CDN에 이미지 업로드
                 const response = await axios.put(fileUrl, req.file.buffer, {
                     headers: {
                         'AccessKey': process.env.BUNNY_ACCESS_KEY,
@@ -682,31 +680,125 @@ app.post('/:game/edit/:id', upload.single('image'), async (req, res) => {
                     }
                 });
 
-                // 업로드 성공 시 이미지 URL 업데이트
                 imageUrl = `${process.env.BUNNY_PULL_ZONE}/${fileName}`;
             } catch (uploadError) {
                 console.error('이미지 업로드 실패:', uploadError);
+                imageUrl = post.imageUrl; // 기존 이미지 URL 유지
             }
+        } else {
+            imageUrl = post.imageUrl; // 이미지가 없으면 기존 이미지 URL 유지
+        }
+
+        // 업데이트할 데이터 준비
+        const updateData = {
+            title,
+            content,
+            author,
+            code,
+            imageUrl
+        };
+
+        // 비밀번호가 입력된 경우에만 업데이트
+        if (password) {
+            const hashedPassword = CryptoJS.SHA256(password).toString();
+            updateData.password = hashedPassword;
         }
 
         // 게시물 업데이트
         await database.collection('post').updateOne(
-            { _id: new ObjectId(req.params.id) },
-            {
-                $set: {
-                    title: req.body.title,
-                    content: req.body.content,
-                    code: req.body.code,
-                    imageUrl: imageUrl,
-                    updatedAt: new Date()
-                }
-            }
+            { _id: new ObjectId(id) },
+            { $set: updateData }
         );
 
-        res.redirect(`/${req.params.game}/detail/${req.params.id}`);
+        res.redirect(`/${game}/detail/${id}`);
     } catch (error) {
         console.error('Edit error:', error);
         res.status(500).send('서버 오류가 발생했습니다.');
+    }
+});
+
+// 댓글 작성 API
+app.post('/api/comments', async (req, res) => {
+    try {
+        const { postId, author, content, password } = req.body;
+        const database = await connectDB();
+        
+        // 비밀번호 해시화
+        const hashedPassword = CryptoJS.SHA256(password).toString();
+        
+        const comment = {
+            postId: new ObjectId(postId),
+            author,
+            content,
+            password: hashedPassword,
+            createdAt: new Date()
+        };
+
+        await database.collection('comments').insertOne(comment);
+        
+        // 게시물의 댓글 수 업데이트
+        await database.collection('post').updateOne(
+            { _id: new ObjectId(postId) },
+            { $inc: { commentCount: 1 } }
+        );
+
+        res.json({ success: true, comment });
+    } catch (error) {
+        console.error('Comment creation error:', error);
+        res.status(500).json({ success: false, error: '댓글 작성 중 오류가 발생했습니다.' });
+    }
+});
+
+// 댓글 목록 조회 API
+app.get('/api/comments/:postId', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const database = await connectDB();
+        
+        const comments = await database.collection('comments')
+            .find({ postId: new ObjectId(postId) })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+        res.json({ success: true, comments });
+    } catch (error) {
+        console.error('Comment retrieval error:', error);
+        res.status(500).json({ success: false, error: '댓글 목록을 불러오는 중 오류가 발생했습니다.' });
+    }
+});
+
+// 댓글 삭제 API
+app.delete('/api/comments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { password } = req.body;
+        
+        const database = await connectDB();
+        const comment = await database.collection('comments').findOne({ _id: new ObjectId(id) });
+        
+        if (!comment) {
+            return res.status(404).json({ success: false, error: '댓글을 찾을 수 없습니다.' });
+        }
+
+        // 비밀번호 검증
+        const hashedPassword = CryptoJS.SHA256(password).toString();
+        if (comment.password !== hashedPassword) {
+            return res.status(403).json({ success: false, error: '비밀번호가 일치하지 않습니다.' });
+        }
+
+        // 댓글 삭제
+        await database.collection('comments').deleteOne({ _id: new ObjectId(id) });
+        
+        // 게시물의 댓글 수 감소
+        await database.collection('post').updateOne(
+            { _id: comment.postId },
+            { $inc: { commentCount: -1 } }
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Comment deletion error:', error);
+        res.status(500).json({ success: false, error: '댓글 삭제 중 오류가 발생했습니다.' });
     }
 });
 
