@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= mode === 'edit' ? '게시물 수정' : '새 게시물 작성' %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --color-background: #1A1A1A;
+            --color-surface: #242424;
+            --color-text: #FFFFFF;
+            --color-text-secondary: #B7B7C9;
+            --color-primary: #7B3AE4;
+            --color-border: #2D2D2D;
+            --content-width: 1080px;
+        }
+
+        body {
+            background-color: var(--color-background);
+            color: var(--color-text);
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .nav-wrapper {
+            width: 100%;
+            background: var(--color-surface);
+            border-bottom: 1px solid var(--color-border);
+            margin-bottom: 40px;
+        }
+
+        .nav {
+            max-width: var(--content-width);
+            margin: 0 auto;
+            padding: 16px 0;
+        }
+
+        .nav-title {
+            color: var(--color-text);
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .container {
+            max-width: var(--content-width);
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .write-title {
+            font-size: 24px;
+            margin-bottom: 32px;
+            color: var(--color-text);
+        }
+
+        .write-form {
+            background: var(--color-surface);
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid var(--color-border);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--color-text);
+            font-weight: 500;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-background);
+            color: var(--color-text);
+        }
+
+        .form-control::placeholder {
+            color: var(--color-text-secondary);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(123, 58, 228, 0.2);
+        }
+
+        textarea.form-control {
+            min-height: 200px;
+            resize: vertical;
+        }
+
+        .submit-button {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            background: var(--Color-Primary-500, #5F32E6);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .submit-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .submit-button .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s linear infinite;
+        }
+
+        .submit-button.loading .spinner {
+            display: inline-block;
+        }
+
+        .submit-button.loading span {
+            opacity: 0.7;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .code-input {
+            font-family: 'Consolas', monospace;
+        }
+
+        .password-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .password-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .password-toggle path {
+            fill: var(--color-text-secondary);
+        }
+
+        .password-toggle:hover path {
+            fill: var(--color-text);
+        }
+
+        #password {
+            padding-right: 44px;
+        }
+
+        .image-upload-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            align-self: stretch;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .upload-box {
+            position: relative;
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .upload-box .placeholder {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            pointer-events: none;
+            z-index: 1;
+            background: none;
+            opacity: 1;
+            transition: opacity 0.3s;
+        }
+
+        .upload-box.has-image .placeholder {
+            opacity: 0;
+        }
+
+        .upload-box .placeholder span {
+            display: inline;
+            background: none;
+            padding: 0;
+        }
+
+        .upload-box .placeholder small {
+            display: inline;
+            background: none;
+            padding: 0;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .upload-box input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-box .preview-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .upload-box.has-image .preview-image {
+            opacity: 1;
+        }
+
+        .upload-box:hover {
+            border-color: var(--color-primary);
+        }
+
+        .upload-box.face {
+            width: 200px;
+            height: 200px;
+        }
+
+        .upload-box.full {
+            width: 132px;
+            height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-wrapper">
+        <div class="nav">
+            <div class="nav-title"><a href="/" style="text-decoration: none; color: inherit;">Customized</a></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1 class="write-title"><%= mode === 'edit' ? '게시물 수정' : '새 게시물 작성' %></h1>
+        
+        <form action="<%= mode === 'edit' ? `/${game}/edit/${post._id}?password=${password}` : `/${game}/write` %>" method="POST" enctype="multipart/form-data" class="write-form" id="writeForm">
+            <div class="form-group">
+                <label for="title" class="form-label">제목</label>
+                <input type="text" id="title" name="title" class="form-control" required value="<%= post ? post.title : '' %>">
+            </div>
+
+            <div class="form-group">
+                <label for="code" class="form-label">코드</label>
+                <input type="text" id="code" name="code" class="form-control" required value="<%= post ? post.code : '' %>">
+            </div>
+
+            <div class="form-group">
+                <label for="content" class="form-label">내용</label>
+                <textarea id="content" name="content" class="form-control" required><%= post ? post.content : '' %></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="author" class="form-label">작성자</label>
+                <input type="text" id="author" name="author" class="form-control" required value="<%= post ? post.author : '' %>" <%= mode === 'edit' ? 'readonly' : '' %>>
+            </div>
+
+            <% if (mode === 'write') { %>
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <div class="password-wrapper">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="비밀번호를 입력하세요" required>
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path fill-rule="evenodd" clip-rule="evenodd" d="M10 4.16667C6.3181 4.16667 3.33333 6.66667 2.5 10C3.33333 13.3333 6.3181 15.8333 10 15.8333C13.6819 15.8333 16.6667 13.3333 17.5 10C16.6667 6.66667 13.6819 4.16667 10 4.16667ZM10 13.3333C8.61929 13.3333 7.5 12.214 7.5 10.8333C7.5 9.45262 8.61929 8.33333 10 8.33333C11.3807 8.33333 12.5 9.45262 12.5 10.8333C12.5 12.214 11.3807 13.3333 10 13.3333Z" fill="#7B7A8E"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            <% } %>
+            
+            <div class="form-group">
+                <label class="form-label">이미지 업로드</label>
+                <div class="image-upload-container">
+                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageFace ? 'has-image' : '' %>" style="width: 200px; height: 200px;">
+                        <div class="placeholder">
+                            <span>정면 이미지</span><br>
+                            <small>200x200</small>
+                        </div>
+                        <input type="file" name="imageFace" accept="image/*">
+                        <% if (post && post.imageUrls && post.imageUrls.imageFace) { %>
+                            <img src="<%= post.imageUrls.imageFace %>" class="preview-image" alt="정면 이미지">
+                        <% } %>
+                    </div>
+                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageFront ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                        <div class="placeholder">
+                            <span>앞모습</span><br>
+                            <small>132x200</small>
+                        </div>
+                        <input type="file" name="imageFront" accept="image/*">
+                        <% if (post && post.imageUrls && post.imageUrls.imageFront) { %>
+                            <img src="<%= post.imageUrls.imageFront %>" class="preview-image" alt="앞모습">
+                        <% } %>
+                    </div>
+                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageSide ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                        <div class="placeholder">
+                            <span>옆모습</span><br>
+                            <small>132x200</small>
+                        </div>
+                        <input type="file" name="imageSide" accept="image/*">
+                        <% if (post && post.imageUrls && post.imageUrls.imageSide) { %>
+                            <img src="<%= post.imageUrls.imageSide %>" class="preview-image" alt="옆모습">
+                        <% } %>
+                    </div>
+                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageBack ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                        <div class="placeholder">
+                            <span>뒷모습</span><br>
+                            <small>132x200</small>
+                        </div>
+                        <input type="file" name="imageBack" accept="image/*">
+                        <% if (post && post.imageUrls && post.imageUrls.imageBack) { %>
+                            <img src="<%= post.imageUrls.imageBack %>" class="preview-image" alt="뒷모습">
+                        <% } %>
+                    </div>
+                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageDetail1 ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                        <div class="placeholder">
+                            <span>상세컷1</span><br>
+                            <small>132x200</small>
+                        </div>
+                        <input type="file" name="imageDetail1" accept="image/*">
+                        <% if (post && post.imageUrls && post.imageUrls.imageDetail1) { %>
+                            <img src="<%= post.imageUrls.imageDetail1 %>" class="preview-image" alt="상세컷1">
+                        <% } %>
+                    </div>
+                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageDetail2 ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                        <div class="placeholder">
+                            <span>상세컷2</span><br>
+                            <small>132x200</small>
+                        </div>
+                        <input type="file" name="imageDetail2" accept="image/*">
+                        <% if (post && post.imageUrls && post.imageUrls.imageDetail2) { %>
+                            <img src="<%= post.imageUrls.imageDetail2 %>" class="preview-image" alt="상세컷2">
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                document.querySelectorAll('.upload-box input[type="file"]').forEach(input => {
+                    input.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            const uploadBox = this.parentElement;
+                            
+                            reader.onload = function(e) {
+                                // 기존 미리보기 이미지가 있다면 제거
+                                const existingPreview = uploadBox.querySelector('.preview-image');
+                                if (existingPreview) {
+                                    existingPreview.remove();
+                                }
+                                
+                                // 새 미리보기 이미지 추가
+                                const img = document.createElement('img');
+                                img.src = e.target.result;
+                                img.classList.add('preview-image');
+                                uploadBox.appendChild(img);
+                                
+                                // placeholder 숨기기
+                                uploadBox.querySelector('.placeholder').style.display = 'none';
+                            }
+                            
+                            reader.readAsDataURL(file);
+                        }
+                    });
+                });
+            </script>
+
+            <button type="submit" class="submit-button">
+                <div class="spinner"></div>
+                <span><%= mode === 'edit' ? '수정하기' : '작성하기' %></span>
+            </button>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script>
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+            } else {
+                passwordInput.type = 'password';
+            }
+        }
+
+        document.querySelector('form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitButton = document.querySelector('.submit-button');
+            
+            // 이미 제출 중이면 중복 제출 방지
+            if (submitButton.disabled) {
+                return;
+            }
+
+            // 작성 모드일 때만 비밀번호 해시화
+            if (document.querySelector('input[name="password"]')) {
+                const passwordInput = document.getElementById('password');
+                if (passwordInput.value) {
+                    passwordInput.value = CryptoJS.SHA256(passwordInput.value).toString();
+                }
+            }
+
+            // 버튼 로딩 상태로 변경
+            submitButton.disabled = true;
+            submitButton.classList.add('loading');
+
+            // 폼 제출
+            this.submit();
+        });
+    </script>
+</body>
+</html>
