@@ -213,12 +213,6 @@
             pointer-events: none;
             z-index: 1;
             background: none;
-            opacity: 1;
-            transition: opacity 0.3s;
-        }
-
-        .upload-box.has-image .placeholder {
-            opacity: 0;
         }
 
         .upload-box .placeholder span {
@@ -251,12 +245,6 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-
-        .upload-box.has-image .preview-image {
-            opacity: 1;
         }
 
         .upload-box:hover {
@@ -322,65 +310,41 @@
             <div class="form-group">
                 <label class="form-label">이미지 업로드</label>
                 <div class="image-upload-container">
-                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageFace ? 'has-image' : '' %>" style="width: 200px; height: 200px;">
+                    <div class="upload-box face">
+                        <input type="file" id="imageFace" name="imageFace" accept="image/*">
                         <div class="placeholder">
-                            <span>정면 이미지</span><br>
-                            <small>200x200</small>
+                            <span>얼굴 이미지</span>
                         </div>
-                        <input type="file" name="imageFace" accept="image/*">
-                        <% if (post && post.imageUrls && post.imageUrls.imageFace) { %>
-                            <img src="<%= post.imageUrls.imageFace %>" class="preview-image" alt="정면 이미지">
-                        <% } %>
                     </div>
-                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageFront ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                    <div class="upload-box full">
+                        <input type="file" id="imageFront" name="imageFront" accept="image/*">
                         <div class="placeholder">
-                            <span>앞모습</span><br>
-                            <small>132x200</small>
+                            <span>정면</span>
                         </div>
-                        <input type="file" name="imageFront" accept="image/*">
-                        <% if (post && post.imageUrls && post.imageUrls.imageFront) { %>
-                            <img src="<%= post.imageUrls.imageFront %>" class="preview-image" alt="앞모습">
-                        <% } %>
                     </div>
-                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageSide ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                    <div class="upload-box full">
+                        <input type="file" id="imageSide" name="imageSide" accept="image/*">
                         <div class="placeholder">
-                            <span>옆모습</span><br>
-                            <small>132x200</small>
+                            <span>측면</span>
                         </div>
-                        <input type="file" name="imageSide" accept="image/*">
-                        <% if (post && post.imageUrls && post.imageUrls.imageSide) { %>
-                            <img src="<%= post.imageUrls.imageSide %>" class="preview-image" alt="옆모습">
-                        <% } %>
                     </div>
-                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageBack ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                    <div class="upload-box full">
+                        <input type="file" id="imageBack" name="imageBack" accept="image/*">
                         <div class="placeholder">
-                            <span>뒷모습</span><br>
-                            <small>132x200</small>
+                            <span>후면</span>
                         </div>
-                        <input type="file" name="imageBack" accept="image/*">
-                        <% if (post && post.imageUrls && post.imageUrls.imageBack) { %>
-                            <img src="<%= post.imageUrls.imageBack %>" class="preview-image" alt="뒷모습">
-                        <% } %>
                     </div>
-                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageDetail1 ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                    <div class="upload-box full">
+                        <input type="file" id="imageDetail1" name="imageDetail1" accept="image/*">
                         <div class="placeholder">
-                            <span>상세컷1</span><br>
-                            <small>132x200</small>
+                            <span>상세1</span>
                         </div>
-                        <input type="file" name="imageDetail1" accept="image/*">
-                        <% if (post && post.imageUrls && post.imageUrls.imageDetail1) { %>
-                            <img src="<%= post.imageUrls.imageDetail1 %>" class="preview-image" alt="상세컷1">
-                        <% } %>
                     </div>
-                    <div class="upload-box <%= post && post.imageUrls && post.imageUrls.imageDetail2 ? 'has-image' : '' %>" style="width: 132px; height: 200px;">
+                    <div class="upload-box full">
+                        <input type="file" id="imageDetail2" name="imageDetail2" accept="image/*">
                         <div class="placeholder">
-                            <span>상세컷2</span><br>
-                            <small>132x200</small>
+                            <span>상세2</span>
                         </div>
-                        <input type="file" name="imageDetail2" accept="image/*">
-                        <% if (post && post.imageUrls && post.imageUrls.imageDetail2) { %>
-                            <img src="<%= post.imageUrls.imageDetail2 %>" class="preview-image" alt="상세컷2">
-                        <% } %>
                     </div>
                 </div>
             </div>
